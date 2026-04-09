@@ -224,16 +224,16 @@ app.get('/api/history/:date', (req, res) => {
   const db = readDb();
   const date = req.params.date;
   const records = db.attendance[date] || {};
-  const students = db.students
-    .slice()
-    .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name), 'es'))
-    .map(student => ({
-      id: student.id,
-      name: student.name,
-      status: records[student.id]?.status || '',
-      teacher: records[student.id]?.teacher || '',
-      updatedAt: records[student.id]?.updatedAt || ''
-    }));
+ const students = db.students
+  .slice()
+  .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name), 'es'))
+  .map(student => ({
+    id: student.id,
+    name: student.name,
+    status: records[student.id]?.status || '',
+    teacher: records[student.id]?.teacher || '',
+    updatedAt: records[student.id]?.updatedAt || ''
+  }));
 
   res.json({
     date,
