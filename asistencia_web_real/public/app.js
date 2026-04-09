@@ -139,19 +139,21 @@ function renderStudents() {
 
     head.appendChild(name);
     head.appendChild(badge);
-    
-const details = document.createElement('div');
-details.style.display = 'none';
-details.style.marginTop = '10px';
-details.innerHTML = `
-  <div><strong>Teléfono:</strong> ${student.phone || 'No registrado'}</div>
-  <div><strong>Responsable:</strong> ${student.parentName || 'No registrado'}</div>
-  <div><strong>Contacto responsable:</strong> ${student.parentPhone || 'No registrado'}</div>
-`;
 
-name.onclick = () => {
-  details.style.display = details.style.display === 'none' ? 'block' : 'none';
-};
+    const details = document.createElement('div');
+    details.className = 'history-meta';
+    details.style.display = 'none';
+    details.style.marginTop = '10px';
+    details.innerHTML = `
+      <div><strong>Teléfono:</strong> ${student.phone || 'No registrado'}</div>
+      <div><strong>Responsable:</strong> ${student.parentName || 'No registrado'}</div>
+      <div><strong>Contacto responsable:</strong> ${student.parentPhone || 'No registrado'}</div>
+    `;
+
+    name.onclick = () => {
+      details.style.display = details.style.display === 'none' ? 'block' : 'none';
+    };
+
     const actions = document.createElement('div');
     actions.className = 'student-actions';
 
@@ -185,8 +187,15 @@ name.onclick = () => {
     deleteBtn.textContent = 'Eliminar';
     deleteBtn.onclick = () => deleteStudent(student);
 
-    actions.append(presentBtn, absentBtn, clearBtn, editBtn, deleteBtn);
-    item.append(head, actions);
+    actions.appendChild(presentBtn);
+    actions.appendChild(absentBtn);
+    actions.appendChild(clearBtn);
+    actions.appendChild(editBtn);
+    actions.appendChild(deleteBtn);
+
+    item.appendChild(head);
+    item.appendChild(details);
+    item.appendChild(actions);
     studentList.appendChild(item);
   });
 
