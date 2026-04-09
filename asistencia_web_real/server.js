@@ -86,20 +86,21 @@ app.post('/api/students', (req, res) => {
   }
 
   const student = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-    name,
-    createdAt: new Date().toISOString()
-  };
-
-  db.students.push(student);
-  writeDb(db);
-  res.status(201).json(student);
-});
+     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+  name,
+  phone: String(req.body.phone || '').trim(),
+  parentName: String(req.body.parentName || '').trim(),
+  parentPhone: String(req.body.parentPhone || '').trim(),
+  createdAt: new Date().toISOString()
+};
 
 app.put('/api/students/:id', (req, res) => {
   const db = readDb();
   const id = req.params.id;
   const name = String(req.body.name || '').trim();
+  const phone = String(req.body.phone || '').trim();
+  const parentName = String(req.body.parentName || '').trim();
+  const parentPhone = String(req.body.parentPhone || '').trim();
   const student = db.students.find(item => item.id === id);
 
   if (!student) {
@@ -107,7 +108,7 @@ app.put('/api/students/:id', (req, res) => {
   }
 
   if (!name) {
-    return res.status(400).json({ error: 'El nombre no puede ir vacío.' });
+    return res.status(400).json({ error: 'El nombre no puede ir vacio.' });
   }
 
   const duplicate = db.students.some(item => item.id !== id && normalize(item.name) === normalize(name));
@@ -116,7 +117,11 @@ app.put('/api/students/:id', (req, res) => {
   }
 
   student.name = name;
+  student.phone = phone;
+  student.parentName = parentName;
+  student.parentPhone = parentPhone;
   student.updatedAt = new Date().toISOString();
+
   writeDb(db);
   res.json(student);
 });
