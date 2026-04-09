@@ -1,4 +1,3 @@
-
 const institutionNameInput = document.getElementById('institutionName');
 const attendanceDateInput = document.getElementById('attendanceDate');
 const teacherNameInput = document.getElementById('teacherName');
@@ -27,13 +26,6 @@ const studentNameInput = document.getElementById('studentName');
 const studentPhoneInput = document.getElementById('studentPhone');
 const studentParentNameInput = document.getElementById('studentParentName');
 const studentParentPhoneInput = document.getElementById('studentParentPhone');
-const reportDateInput = document.getElementById('reportDate');
-const reportStudentSelect = document.getElementById('reportStudent');
-const reportMonthInput = document.getElementById('reportMonth');
-const reportDayBtn = document.getElementById('reportDayBtn');
-const reportStudentBtn = document.getElementById('reportStudentBtn');
-const reportMonthBtn = document.getElementById('reportMonthBtn');
-const reportOutput = document.getElementById('reportOutput');
 const cancelDialogBtn = document.getElementById('cancelDialogBtn');
 
 const historyDialog = document.getElementById('historyDialog');
@@ -42,134 +34,26 @@ const historyDialogSub = document.getElementById('historyDialogSub');
 const historyDetailList = document.getElementById('historyDetailList');
 const closeHistoryDialogBtn = document.getElementById('closeHistoryDialogBtn');
 
+const reportDateInput = document.getElementById('reportDate');
+const reportStudentSelect = document.getElementById('reportStudent');
+const reportMonthInput = document.getElementById('reportMonth');
+const reportDayBtn = document.getElementById('reportDayBtn');
+const reportStudentBtn = document.getElementById('reportStudentBtn');
+const reportMonthBtn = document.getElementById('reportMonthBtn');
+const reportOutput = document.getElementById('reportOutput');
+
 let students = [];
 let attendance = {};
 let history = [];
 
-function fillStudentReportSelect() {
-  if (!reportStudentSelect) return;
-
-  reportStudentSelect.innerHTML = '';
-
-  const first = document.createElement('option');
-  first.value = '';
-  first.textContent = 'Selecciona un joven';
-  reportStudentSelect.appendChild(first);
-
-  students
-    .slice()
-    .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name), 'es'))
-    .forEach(student => {
-      const option = document.createElement('option');
-      option.value = student.id;
-      option.textContent = student.name;
-      reportStudentSelect.appendChild(option);
-    });
-
-  function renderReportCard(title, lines) {
-  if (!reportOutput) return;
-
-  reportOutput.innerHTML = '';
-
-  const card = document.createElement('div');
-  card.className = 'history-item';
-
-  const h = document.createElement('div');
-  h.className = 'student-name';
-  h.textContent = title;
-
-  const body = document.createElement('div');
-  body.className = 'history-meta';
-  body.style.marginTop = '10px';
-  body.style.whiteSpace = 'pre-wrap';
-  body.textContent = lines.join('\n');
-
-  card.appendChild(h);
-  card.appendChild(body);
-  reportOutput.appendChild(card);
-}
-
-async function showDayReport() {
-  const date = reportDateInput.value;
-  if (!date) {
-    showToast('Selecciona una fecha');
-    return;
-  }
-
-  const detail = await api('/api/history/' + date);
-  const lines = detail.students.map(student =>
-    `${student.name}: ${student.status || 'Sin marcar'}`
-  );
-
-  renderReportCard(
-    'Reporte del día ' + date,
-    lines.length ? lines : ['No hay datos']
-  );
-}
-
-async function showStudentReport() {
-  const studentId = reportStudentSelect.value;
-  if (!studentId) {
-    showToast('Selecciona un joven');
-    return;
-  }
-
-  const student = students.find(s => s.id === studentId);
-  const historyItems = await api('/api/history');
-
-  const lines = [];
-
-  for (const item of historyItems) {
-    const detail = await api('/api/history/' + item.date);
-    const row = detail.students.find(s => s.id === studentId);
-    lines.push(`${item.date}: ${row?.status || 'Sin marcar'}`);
-  }
-
-  renderReportCard(
-    'Reporte de ' + (student?.name || 'Joven'),
-    lines.length ? lines : ['No hay historial']
-  );
-}
-
-async function showMonthReport() {
-  const month = reportMonthInput.value;
-  if (!month) {
-    showToast('Selecciona un mes');
-    return;
-  }
-
-  const historyItems = await api('/api/history');
-  const filtered = historyItems.filter(item => item.date.startsWith(month));
-
-  if (!filtered.length) {
-    renderReportCard('Reporte del mes ' + month, ['No hay registros']);
-    return;
-  }
-
-  let totalPresent = 0;
-  let totalAbsent = 0;
-  let totalUnmarked = 0;
-
-  filtered.forEach(item => {
-    totalPresent += item.present || 0;
-    totalAbsent += item.absent || 0;
-    totalUnmarked += item.unmarked || 0;
-  });
-
-  const lines = [
-    `Fechas con registro: ${filtered.length}`,
-    `Presentes acumulados: ${totalPresent}`,
-    `Ausentes acumulados: ${totalAbsent}`,
-    `Sin marcar acumulados: ${totalUnmarked}`
-  ];
-
-  renderReportCard('Reporte del mes ' + month, lines);
-}
-}
 function todayISO() {
   const d = new Date();
   const tz = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+}
+
+function todayMonth() {
+  return todayISO().slice(0, 7);
 }
 
 function normalize(text) {
@@ -195,22 +79,27 @@ async function api(url, options = {}) {
   });
 
   let data = null;
-  try { data = await response.json(); } catch (e) {}
+  try {
+    data = await response.json();
+  } catch (e) {}
 
   if (!response.ok) {
     throw new Error(data?.error || 'Ocurrió un error.');
   }
+
   return data;
 }
 
 function counts() {
   let present = 0;
   let absent = 0;
+
   students.forEach(student => {
     const status = attendance[student.id]?.status || '';
     if (status === 'Presente') present += 1;
     if (status === 'Ausente') absent += 1;
   });
+
   return {
     total: students.length,
     present,
@@ -236,6 +125,27 @@ function statusClass(status) {
 
 function statusLabel(status) {
   return status || 'Sin marcar';
+}
+
+function fillStudentReportSelect() {
+  if (!reportStudentSelect) return;
+
+  reportStudentSelect.innerHTML = '';
+
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = 'Selecciona un joven';
+  reportStudentSelect.appendChild(first);
+
+  students
+    .slice()
+    .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name), 'es'))
+    .forEach(student => {
+      const option = document.createElement('option');
+      option.value = student.id;
+      option.textContent = student.name;
+      reportStudentSelect.appendChild(option);
+    });
 }
 
 function renderStudents() {
@@ -368,9 +278,15 @@ function renderHistory() {
       await loadAll();
     };
 
-    actions.append(seeBtn, deleteBtn);
-    card.append(head, meta, actions);
-    head.append(title);
+    actions.appendChild(seeBtn);
+    actions.appendChild(deleteBtn);
+
+    head.appendChild(title);
+
+    card.appendChild(head);
+    card.appendChild(meta);
+    card.appendChild(actions);
+
     historyList.appendChild(card);
   });
 }
@@ -430,6 +346,7 @@ function closeStudentDialog() {
 
 async function saveStudentFromDialog(event) {
   event.preventDefault();
+
   const id = studentIdInput.value;
   const name = studentNameInput.value.trim();
   const phone = studentPhoneInput.value.trim();
@@ -482,6 +399,7 @@ async function setAttendance(studentId, status) {
       teacher: teacherNameInput.value.trim()
     })
   });
+
   attendance = await api('/api/attendance/' + attendanceDateInput.value);
   renderStudents();
 }
@@ -498,6 +416,7 @@ async function clearCurrentDay() {
 
 async function openHistoryDetail(date) {
   const detail = await api('/api/history/' + date);
+
   historyDialogTitle.textContent = 'Detalle de ' + date;
   historyDialogSub.textContent = detail.institutionName || '';
   historyDetailList.innerHTML = '';
@@ -519,28 +438,143 @@ async function openHistoryDetail(date) {
 
     const meta = document.createElement('div');
     meta.className = 'detail-meta';
-    meta.textContent = student.teacher ? 'Marcado por: ' + student.teacher : 'Sin maestro registrado';
+    meta.innerHTML = `
+      <div>${student.teacher ? 'Marcado por: ' + student.teacher : 'Sin maestro registrado'}</div>
+      <div><strong>Teléfono:</strong> ${student.phone || 'No registrado'}</div>
+      <div><strong>Responsable:</strong> ${student.parentName || 'No registrado'}</div>
+      <div><strong>Contacto responsable:</strong> ${student.parentPhone || 'No registrado'}</div>
+    `;
 
-    head.append(name, badge);
-    item.append(head, meta);
+    head.appendChild(name);
+    head.appendChild(badge);
+    item.appendChild(head);
+    item.appendChild(meta);
     historyDetailList.appendChild(item);
   });
 
   historyDialog.showModal();
 }
 
-async function clearAllHistory() {
-  if (!confirm('¿Seguro que quieres borrar todo el historial?')) return;
-  await api('/api/history', { method: 'DELETE' });
-  showToast('Historial borrado');
-  await loadAll();
+function renderReportCard(title, lines) {
+  if (!reportOutput) return;
+
+  reportOutput.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'history-item';
+
+  const h = document.createElement('div');
+  h.className = 'student-name';
+  h.textContent = title;
+
+  const body = document.createElement('div');
+  body.className = 'history-meta';
+  body.style.marginTop = '10px';
+  body.style.whiteSpace = 'pre-wrap';
+  body.textContent = lines.join('\n');
+
+  card.appendChild(h);
+  card.appendChild(body);
+  reportOutput.appendChild(card);
+}
+
+async function showDayReport() {
+  const date = reportDateInput.value;
+  if (!date) {
+    showToast('Selecciona una fecha');
+    return;
+  }
+
+  const detail = await api('/api/history/' + date);
+  const lines = detail.students.map(student => `${student.name}: ${student.status || 'Sin marcar'}`);
+
+  renderReportCard('Reporte del día ' + date, lines.length ? lines : ['No hay datos']);
+}
+
+async function showStudentReport() {
+  const studentId = reportStudentSelect.value;
+  if (!studentId) {
+    showToast('Selecciona un joven');
+    return;
+  }
+
+  const student = students.find(s => s.id === studentId);
+  const historyItems = await api('/api/history');
+  const lines = [];
+
+  for (const item of historyItems) {
+    const detail = await api('/api/history/' + item.date);
+    const row = detail.students.find(s => s.id === studentId);
+    lines.push(`${item.date}: ${row?.status || 'Sin marcar'}`);
+  }
+
+  renderReportCard(
+    'Reporte de ' + (student?.name || 'Joven'),
+    lines.length ? lines : ['No hay historial']
+  );
+}
+
+async function showMonthReport() {
+  const month = reportMonthInput.value;
+  if (!month) {
+    showToast('Selecciona un mes');
+    return;
+  }
+
+  const historyItems = await api('/api/history');
+  const filtered = historyItems.filter(item => item.date.startsWith(month));
+
+  if (!filtered.length) {
+    renderReportCard('Reporte del mes ' + month, ['No hay registros']);
+    return;
+  }
+
+  let totalPresent = 0;
+  let totalAbsent = 0;
+  let totalUnmarked = 0;
+
+  filtered.forEach(item => {
+    totalPresent += item.present || 0;
+    totalAbsent += item.absent || 0;
+    totalUnmarked += item.unmarked || 0;
+  });
+
+  const lines = [
+    `Fechas con registro: ${filtered.length}`,
+    `Presentes acumulados: ${totalPresent}`,
+    `Ausentes acumulados: ${totalAbsent}`,
+    `Sin marcar acumulados: ${totalUnmarked}`
+  ];
+
+  renderReportCard('Reporte del mes ' + month, lines);
 }
 
 saveConfigBtn.addEventListener('click', saveConfig);
 newStudentBtn.addEventListener('click', () => openStudentDialog());
 clearDayBtn.addEventListener('click', clearCurrentDay);
 refreshBtn.addEventListener('click', loadAll);
-clearHistoryBtn.addEventListener('click', clearAllHistory);
+clearHistoryBtn.addEventListener('click', async () => {
+  if (!confirm('¿Seguro que quieres borrar todo el historial?')) return;
+  await api('/api/history', { method: 'DELETE' });
+  showToast('Historial borrado');
+  await loadAll();
+});
+
+studentForm.addEventListener('submit', saveStudentFromDialog);
+cancelDialogBtn.addEventListener('click', closeStudentDialog);
+
+if (closeHistoryDialogBtn) {
+  closeHistoryDialogBtn.addEventListener('click', () => {
+    historyDialog.close();
+  });
+}
+
+if (historyDialog) {
+  historyDialog.addEventListener('cancel', () => {
+    historyDialog.close();
+  });
+}
+
 if (reportDayBtn) {
   reportDayBtn.addEventListener('click', showDayReport);
 }
@@ -552,15 +586,16 @@ if (reportStudentBtn) {
 if (reportMonthBtn) {
   reportMonthBtn.addEventListener('click', showMonthReport);
 }
-studentForm.addEventListener('submit', saveStudentFromDialog);
-cancelDialogBtn.addEventListener('click', closeStudentDialog);
-closeHistoryDialogBtn.addEventListener('click', () => historyDialog.close());
+
 attendanceDateInput.addEventListener('change', async () => {
   await loadAttendance();
   renderStudents();
 });
+
 institutionNameInput.addEventListener('blur', () => {
-  if (institutionNameInput.value.trim()) saveConfig().catch(() => {});
+  if (institutionNameInput.value.trim()) {
+    saveConfig().catch(() => {});
+  }
 });
 
 if ('serviceWorker' in navigator) {
@@ -570,6 +605,15 @@ if ('serviceWorker' in navigator) {
 }
 
 attendanceDateInput.value = todayISO();
+
+if (reportDateInput) {
+  reportDateInput.value = todayISO();
+}
+
+if (reportMonthInput) {
+  reportMonthInput.value = todayMonth();
+}
+
 loadAll().catch(error => {
   alert(error.message || 'No se pudo cargar la app.');
 });
