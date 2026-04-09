@@ -24,6 +24,9 @@ const studentForm = document.getElementById('studentForm');
 const dialogTitle = document.getElementById('dialogTitle');
 const studentIdInput = document.getElementById('studentId');
 const studentNameInput = document.getElementById('studentName');
+const studentPhoneInput = document.getElementById('studentPhone');
+const studentParentNameInput = document.getElementById('studentParentName');
+const studentParentPhoneInput = document.getElementById('studentParentPhone');
 const cancelDialogBtn = document.getElementById('cancelDialogBtn');
 
 const historyDialog = document.getElementById('historyDialog');
@@ -128,6 +131,7 @@ function renderStudents() {
     const name = document.createElement('div');
     name.className = 'student-name';
     name.textContent = student.name;
+    name.style.cursor = 'pointer';
 
     const badge = document.createElement('div');
     badge.className = 'status ' + statusClass(status);
@@ -135,7 +139,19 @@ function renderStudents() {
 
     head.appendChild(name);
     head.appendChild(badge);
+    
+const details = document.createElement('div');
+details.style.display = 'none';
+details.style.marginTop = '10px';
+details.innerHTML = `
+  <div><strong>Teléfono:</strong> ${student.phone || 'No registrado'}</div>
+  <div><strong>Responsable:</strong> ${student.parentName || 'No registrado'}</div>
+  <div><strong>Contacto responsable:</strong> ${student.parentPhone || 'No registrado'}</div>
+`;
 
+name.onclick = () => {
+  details.style.display = details.style.display === 'none' ? 'block' : 'none';
+};
     const actions = document.createElement('div');
     actions.className = 'student-actions';
 
@@ -258,6 +274,9 @@ async function saveConfig() {
 function openStudentDialog(student = null) {
   studentIdInput.value = student?.id || '';
   studentNameInput.value = student?.name || '';
+  studentPhoneInput.value = student?.phone || '';
+  studentParentNameInput.value = student?.parentName || '';
+  studentParentPhoneInput.value = student?.parentPhone || '';
   dialogTitle.textContent = student ? 'Editar joven' : 'Agregar joven';
   studentDialog.showModal();
   setTimeout(() => studentNameInput.focus(), 50);
@@ -267,12 +286,18 @@ function closeStudentDialog() {
   studentDialog.close();
   studentForm.reset();
   studentIdInput.value = '';
+  studentPhoneInput.value = '';
+  studentParentNameInput.value = '';
+  studentParentPhoneInput.value = '';
 }
 
 async function saveStudentFromDialog(event) {
   event.preventDefault();
   const id = studentIdInput.value;
   const name = studentNameInput.value.trim();
+  const phone = studentPhoneInput.value.trim();
+  const parentName = studentParentNameInput.value.trim();
+  const parentPhone = studentParentPhoneInput.value.trim();
 
   if (!name) {
     showToast('Escribe el nombre');
@@ -280,16 +305,23 @@ async function saveStudentFromDialog(event) {
     return;
   }
 
+  const payload = {
+    name,
+    phone,
+    parentName,
+    parentPhone
+  };
+
   if (id) {
     await api('/api/students/' + id, {
       method: 'PUT',
-      body: JSON.stringify({ name })
+      body: JSON.stringify(payload)
     });
-    showToast('Nombre actualizado');
+    showToast('Joven actualizado');
   } else {
     await api('/api/students', {
       method: 'POST',
-      body: JSON.stringify({ name })
+      body: JSON.stringify(payload)
     });
     showToast('Joven agregado');
   }
