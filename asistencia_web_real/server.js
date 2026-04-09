@@ -86,13 +86,18 @@ app.post('/api/students', (req, res) => {
   }
 
   const student = {
-     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-  name,
-  phone: String(req.body.phone || '').trim(),
-  parentName: String(req.body.parentName || '').trim(),
-  parentPhone: String(req.body.parentPhone || '').trim(),
-  createdAt: new Date().toISOString()
-};
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    name,
+    phone: String(req.body.phone || '').trim(),
+    parentName: String(req.body.parentName || '').trim(),
+    parentPhone: String(req.body.parentPhone || '').trim(),
+    createdAt: new Date().toISOString()
+  };
+
+  db.students.push(student);
+  writeDb(db);
+  res.status(201).json(student);
+});
 
 app.put('/api/students/:id', (req, res) => {
   const db = readDb();
