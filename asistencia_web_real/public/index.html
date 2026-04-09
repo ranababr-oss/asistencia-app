@@ -68,6 +68,36 @@
     <div class="card">
       <div class="section-title">
         <div>
+      <strong>Reportes</strong>
+      <div class="tiny">Por día, por joven y por mes.</div>
+    </div>
+  </div>
+
+  <div class="grid grid-3">
+    <div>
+      <label for="reportDate">Reporte por día</label>
+      <input id="reportDate" type="date" />
+      <button id="reportDayBtn" type="button" class="btn-soft" style="margin-top:8px;">Ver reporte del día</button>
+    </div>
+
+    <div>
+      <label for="reportStudent">Reporte por joven</label>
+      <select id="reportStudent"></select>
+      <button id="reportStudentBtn" type="button" class="btn-soft" style="margin-top:8px;">Ver reporte del joven</button>
+    </div>
+
+    <div>
+      <label for="reportMonth">Reporte por mes</label>
+      <input id="reportMonth" type="month" />
+      <button id="reportMonthBtn" type="button" class="btn-soft" style="margin-top:8px;">Ver reporte del mes</button>
+    </div>
+  </div>
+
+  <div id="reportOutput" class="list" style="margin-top:14px;"></div>
+</div>
+<div class="card">
+  <div class="section-title">
+    <div>
           <strong>Historial</strong>
           <div class="tiny">Fechas guardadas con su resumen.</div>
         </div>
