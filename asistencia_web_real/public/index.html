@@ -83,17 +83,28 @@
   </div>
 
   <dialog id="studentDialog" class="dialog">
-    <form method="dialog" class="dialog-card" id="studentForm">
-      <h3 id="dialogTitle">Agregar joven</h3>
-      <input type="hidden" id="studentId" />
-      <label for="studentName">Nombre</label>
-      <input id="studentName" type="text" placeholder="Nombre del joven" />
-      <div class="actions-row">
-        <button type="button" id="cancelDialogBtn" class="btn-neutral">Cancelar</button>
-        <button type="submit">Guardar</button>
-      </div>
-    </form>
-  </dialog>
+  <form method="dialog" class="dialog-card" id="studentForm">
+    <h3 id="dialogTitle">Agregar joven</h3>
+    <input type="hidden" id="studentId" />
+
+    <label for="studentName">Nombre</label>
+    <input id="studentName" type="text" placeholder="Nombre del joven" />
+
+    <label for="studentPhone">Teléfono</label>
+    <input id="studentPhone" type="text" placeholder="Teléfono del joven" />
+
+    <label for="studentParentName">Responsable</label>
+    <input id="studentParentName" type="text" placeholder="Nombre del responsable" />
+
+    <label for="studentParentPhone">Contacto del responsable</label>
+    <input id="studentParentPhone" type="text" placeholder="Teléfono del responsable" />
+
+    <div class="actions-row">
+      <button type="button" id="cancelDialogBtn" class="btn-neutral">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
 
   <dialog id="historyDialog" class="dialog">
     <div class="dialog-card">
