@@ -27,6 +27,13 @@ const studentNameInput = document.getElementById('studentName');
 const studentPhoneInput = document.getElementById('studentPhone');
 const studentParentNameInput = document.getElementById('studentParentName');
 const studentParentPhoneInput = document.getElementById('studentParentPhone');
+const reportDateInput = document.getElementById('reportDate');
+const reportStudentSelect = document.getElementById('reportStudent');
+const reportMonthInput = document.getElementById('reportMonth');
+const reportDayBtn = document.getElementById('reportDayBtn');
+const reportStudentBtn = document.getElementById('reportStudentBtn');
+const reportMonthBtn = document.getElementById('reportMonthBtn');
+const reportOutput = document.getElementById('reportOutput');
 const cancelDialogBtn = document.getElementById('cancelDialogBtn');
 
 const historyDialog = document.getElementById('historyDialog');
@@ -39,6 +46,126 @@ let students = [];
 let attendance = {};
 let history = [];
 
+function fillStudentReportSelect() {
+  if (!reportStudentSelect) return;
+
+  reportStudentSelect.innerHTML = '';
+
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = 'Selecciona un joven';
+  reportStudentSelect.appendChild(first);
+
+  students
+    .slice()
+    .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name), 'es'))
+    .forEach(student => {
+      const option = document.createElement('option');
+      option.value = student.id;
+      option.textContent = student.name;
+      reportStudentSelect.appendChild(option);
+    });
+
+  function renderReportCard(title, lines) {
+  if (!reportOutput) return;
+
+  reportOutput.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'history-item';
+
+  const h = document.createElement('div');
+  h.className = 'student-name';
+  h.textContent = title;
+
+  const body = document.createElement('div');
+  body.className = 'history-meta';
+  body.style.marginTop = '10px';
+  body.style.whiteSpace = 'pre-wrap';
+  body.textContent = lines.join('\n');
+
+  card.appendChild(h);
+  card.appendChild(body);
+  reportOutput.appendChild(card);
+}
+
+async function showDayReport() {
+  const date = reportDateInput.value;
+  if (!date) {
+    showToast('Selecciona una fecha');
+    return;
+  }
+
+  const detail = await api('/api/history/' + date);
+  const lines = detail.students.map(student =>
+    `${student.name}: ${student.status || 'Sin marcar'}`
+  );
+
+  renderReportCard(
+    'Reporte del día ' + date,
+    lines.length ? lines : ['No hay datos']
+  );
+}
+
+async function showStudentReport() {
+  const studentId = reportStudentSelect.value;
+  if (!studentId) {
+    showToast('Selecciona un joven');
+    return;
+  }
+
+  const student = students.find(s => s.id === studentId);
+  const historyItems = await api('/api/history');
+
+  const lines = [];
+
+  for (const item of historyItems) {
+    const detail = await api('/api/history/' + item.date);
+    const row = detail.students.find(s => s.id === studentId);
+    lines.push(`${item.date}: ${row?.status || 'Sin marcar'}`);
+  }
+
+  renderReportCard(
+    'Reporte de ' + (student?.name || 'Joven'),
+    lines.length ? lines : ['No hay historial']
+  );
+}
+
+async function showMonthReport() {
+  const month = reportMonthInput.value;
+  if (!month) {
+    showToast('Selecciona un mes');
+    return;
+  }
+
+  const historyItems = await api('/api/history');
+  const filtered = historyItems.filter(item => item.date.startsWith(month));
+
+  if (!filtered.length) {
+    renderReportCard('Reporte del mes ' + month, ['No hay registros']);
+    return;
+  }
+
+  let totalPresent = 0;
+  let totalAbsent = 0;
+  let totalUnmarked = 0;
+
+  filtered.forEach(item => {
+    totalPresent += item.present || 0;
+    totalAbsent += item.absent || 0;
+    totalUnmarked += item.unmarked || 0;
+  });
+
+  const lines = [
+    `Fechas con registro: ${filtered.length}`,
+    `Presentes acumulados: ${totalPresent}`,
+    `Ausentes acumulados: ${totalAbsent}`,
+    `Sin marcar acumulados: ${totalUnmarked}`
+  ];
+
+  renderReportCard('Reporte del mes ' + month, lines);
+}
+}
 function todayISO() {
   const d = new Date();
   const tz = d.getTimezoneOffset() * 60000;
@@ -268,6 +395,7 @@ async function loadHistory() {
 
 async function loadAll() {
   await Promise.all([loadConfig(), loadStudents(), loadAttendance(), loadHistory()]);
+  fillStudentReportSelect();
   renderStudents();
   renderHistory();
 }
@@ -413,6 +541,17 @@ newStudentBtn.addEventListener('click', () => openStudentDialog());
 clearDayBtn.addEventListener('click', clearCurrentDay);
 refreshBtn.addEventListener('click', loadAll);
 clearHistoryBtn.addEventListener('click', clearAllHistory);
+if (reportDayBtn) {
+  reportDayBtn.addEventListener('click', showDayReport);
+}
+
+if (reportStudentBtn) {
+  reportStudentBtn.addEventListener('click', showStudentReport);
+}
+
+if (reportMonthBtn) {
+  reportMonthBtn.addEventListener('click', showMonthReport);
+}
 studentForm.addEventListener('submit', saveStudentFromDialog);
 cancelDialogBtn.addEventListener('click', closeStudentDialog);
 closeHistoryDialogBtn.addEventListener('click', () => historyDialog.close());
