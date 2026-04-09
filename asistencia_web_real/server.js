@@ -197,6 +197,41 @@ app.delete('/api/attendance/:date', (req, res) => {
   res.json({ ok: true });
 });
 
+app.delete('/api/attendance/:date', (req, res) => {
+  const db = readDb();
+  delete db.attendance[req.params.date];
+  writeDb(db);
+  res.json({ ok: true });
+});
+
+app.get('/api/history', (req, res) => {
+  const db = readDb();
+
+  const history = Object.keys(db.attendance)
+    .sort((a, b) => b.localeCompare(a))
+    .map(date => {
+      const records = db.attendance[date] || {};
+      let present = 0;
+      let absent = 0;
+
+      Object.values(records).forEach(record => {
+        if (record.status === 'Presente') present += 1;
+        if (record.status === 'Ausente') absent += 1;
+      });
+
+      return {
+        date,
+        totalStudents: db.students.length,
+        marked: Object.keys(records).length,
+        present,
+        absent,
+        unmarked: Math.max(db.students.length - present - absent, 0)
+      };
+    });
+
+  res.json(history);
+});
+
 app.get('/api/history/:date', (req, res) => {
   const db = readDb();
   const date = req.params.date;
@@ -208,6 +243,9 @@ app.get('/api/history/:date', (req, res) => {
     .map(student => ({
       id: student.id,
       name: student.name,
+      phone: student.phone || '',
+      parentName: student.parentName || '',
+      parentPhone: student.parentPhone || '',
       status: records[student.id]?.status || '',
       teacher: records[student.id]?.teacher || '',
       updatedAt: records[student.id]?.updatedAt || ''
