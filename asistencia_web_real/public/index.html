@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>Asistencia Web</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Lista de asistencia</h1>
+      <p class="sub">Versión web real para compartir entre varios maestros.</p>
+
+      <div class="grid grid-3">
+        <div>
+          <label for="institutionName">Institución</label>
+          <input id="institutionName" type="text" placeholder="Ej. Iglesia / Escuela / Colegio" />
+        </div>
+        <div>
+          <label for="attendanceDate">Día</label>
+          <input id="attendanceDate" type="date" />
+        </div>
+        <div>
+          <label for="teacherName">Maestro</label>
+          <input id="teacherName" type="text" placeholder="Tu nombre" />
+        </div>
+      </div>
+
+      <div class="actions-row top-actions">
+        <button id="saveConfigBtn" type="button">Guardar institución</button>
+        <button id="newStudentBtn" type="button" class="btn-soft">Agregar joven</button>
+        <button id="clearDayBtn" type="button" class="btn-soft">Limpiar día actual</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <strong>Resumen del día</strong>
+          <div class="tiny">Los cambios se guardan al momento.</div>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="box"><div class="num" id="countTotal">0</div><div class="tiny">Total</div></div>
+        <div class="box"><div class="num" id="countPresent">0</div><div class="tiny">Presentes</div></div>
+        <div class="box"><div class="num" id="countAbsent">0</div><div class="tiny">Ausentes</div></div>
+        <div class="box"><div class="num" id="countUnmarked">0</div><div class="tiny">Sin marcar</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <strong>Lista fija de jóvenes</strong>
+          <div class="tiny">Marca presente o ausente. Si llega uno nuevo, agrégalo una vez y quedará fijo.</div>
+        </div>
+        <div class="pill" id="studentCounter">0 jóvenes</div>
+      </div>
+
+      <div id="studentList" class="list"></div>
+      <div id="emptyStudents" class="muted-box">Todavía no hay jóvenes en la lista.</div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <strong>Historial</strong>
+          <div class="tiny">Fechas guardadas con su resumen.</div>
+        </div>
+        <div class="actions-row">
+          <button id="refreshBtn" type="button" class="btn-soft">Actualizar</button>
+          <button id="clearHistoryBtn" type="button" class="btn-danger">Borrar historial</button>
+        </div>
+      </div>
+
+      <div id="historyList" class="list"></div>
+      <div id="emptyHistory" class="muted-box">No hay historial todavía.</div>
+    </div>
+  </div>
+
+  <dialog id="studentDialog" class="dialog">
+    <form method="dialog" class="dialog-card" id="studentForm">
+      <h3 id="dialogTitle">Agregar joven</h3>
+      <input type="hidden" id="studentId" />
+      <label for="studentName">Nombre</label>
+      <input id="studentName" type="text" placeholder="Nombre del joven" />
+      <div class="actions-row">
+        <button type="button" id="cancelDialogBtn" class="btn-neutral">Cancelar</button>
+        <button type="submit">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="historyDialog" class="dialog">
+    <div class="dialog-card">
+      <div class="section-title">
+        <div>
+          <h3 id="historyDialogTitle">Detalle</h3>
+          <div class="tiny" id="historyDialogSub"></div>
+        </div>
+        <button type="button" id="closeHistoryDialogBtn" class="btn-neutral close-btn">Cerrar</button>
+      </div>
+      <div id="historyDetailList" class="list compact-list"></div>
+    </div>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

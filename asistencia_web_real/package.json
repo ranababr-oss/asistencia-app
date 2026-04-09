@@ -1,0 +1,12 @@
+{
+  "name": "asistencia-web-real",
+  "version": "1.0.0",
+  "description": "App web de asistencia compartida para varios maestros",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
