@@ -1,7 +1,4 @@
 {
-  "config": {
-    "institutionName": ""
-  },
-  "students": [],
-  "attendance": {}
+  "groups": [],
+  "currentGroupId": ""
 }
