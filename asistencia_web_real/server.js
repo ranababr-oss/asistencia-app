@@ -12,11 +12,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function defaultDb() {
   return {
-    config: {
-      institutionName: ''
-    },
-    students: [],
-    attendance: {}
+    groups: [],
+    currentGroupId: ''
   };
 }
 
@@ -47,40 +44,118 @@ function normalize(text) {
     .trim();
 }
 
+function makeId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function getGroupOr404(db, groupId, res) {
+  const group = db.groups.find(g => g.id === groupId);
+  if (!group) {
+    res.status(404).json({ error: 'Grupo no encontrado.' });
+    return null;
+  }
+  return group;
+}
+
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-app.get('/api/config', (req, res) => {
+app.get('/api/groups', (req, res) => {
   const db = readDb();
-  res.json(db.config);
+
+  const groups = db.groups
+    .slice()
+    .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name), 'es'))
+    .map(group => ({
+      id: group.id,
+      name: group.name
+    }));
+
+  res.json({
+    groups,
+    currentGroupId: db.currentGroupId || ''
+  });
 });
 
-app.put('/api/config', (req, res) => {
+app.post('/api/groups', (req, res) => {
   const db = readDb();
-  const institutionName = String(req.body.institutionName || '').trim();
-  db.config.institutionName = institutionName;
+  const name = String(req.body.name || '').trim();
+
+  if (!name) {
+    return res.status(400).json({ error: 'Escribe el nombre del grupo.' });
+  }
+
+  const exists = db.groups.some(group => normalize(group.name) === normalize(name));
+  if (exists) {
+    return res.status(409).json({ error: 'Ese grupo ya existe.' });
+  }
+
+  const group = {
+    id: makeId(),
+    name,
+    students: [],
+    attendance: {}
+  };
+
+  db.groups.push(group);
+  db.currentGroupId = group.id;
   writeDb(db);
-  res.json({ ok: true, config: db.config });
+
+  res.status(201).json({
+    ok: true,
+    group,
+    currentGroupId: db.currentGroupId
+  });
+});
+
+app.put('/api/groups/current', (req, res) => {
+  const db = readDb();
+  const groupId = String(req.body.groupId || '').trim();
+
+  if (!groupId) {
+    db.currentGroupId = '';
+    writeDb(db);
+    return res.json({ ok: true, currentGroupId: '' });
+  }
+
+  const group = db.groups.find(g => g.id === groupId);
+  if (!group) {
+    return res.status(404).json({ error: 'Grupo no encontrado.' });
+  }
+
+  db.currentGroupId = groupId;
+  writeDb(db);
+
+  res.json({ ok: true, currentGroupId: groupId });
 });
 
 app.get('/api/students', (req, res) => {
   const db = readDb();
-  const sorted = db.students.slice().sort((a, b) =>
+  const groupId = String(req.query.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
+
+  const sorted = group.students.slice().sort((a, b) =>
     normalize(a.name).localeCompare(normalize(b.name), 'es')
   );
+
   res.json(sorted);
 });
 
 app.post('/api/students', (req, res) => {
   const db = readDb();
+  const groupId = String(req.body.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
+
   const name = String(req.body.name || '').trim();
 
   if (!name) {
     return res.status(400).json({ error: 'Escribe el nombre del estudiante.' });
   }
 
-  const exists = db.students.some(student => normalize(student.name) === normalize(name));
+  const exists = group.students.some(student => normalize(student.name) === normalize(name));
   if (exists) {
     return res.status(409).json({ error: 'Ese estudiante ya existe.' });
   }
@@ -94,19 +169,23 @@ app.post('/api/students', (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  db.students.push(student);
+  group.students.push(student);
   writeDb(db);
   res.status(201).json(student);
 });
 
 app.put('/api/students/:id', (req, res) => {
   const db = readDb();
+  const groupId = String(req.body.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
+  
   const id = req.params.id;
   const name = String(req.body.name || '').trim();
   const phone = String(req.body.phone || '').trim();
   const parentName = String(req.body.parentName || '').trim();
   const parentPhone = String(req.body.parentPhone || '').trim();
-  const student = db.students.find(item => item.id === id);
+  const student = group.students.find(item => item.id === id);
 
   if (!student) {
     return res.status(404).json({ error: 'Estudiante no encontrado.' });
@@ -116,7 +195,7 @@ app.put('/api/students/:id', (req, res) => {
     return res.status(400).json({ error: 'El nombre no puede ir vacio.' });
   }
 
-  const duplicate = db.students.some(item => item.id !== id && normalize(item.name) === normalize(name));
+ const duplicate = group.students.some(item => item.id !== id && normalize(item.name) === normalize(name));
   if (duplicate) {
     return res.status(409).json({ error: 'Ya existe un estudiante con ese nombre.' });
   }
@@ -133,19 +212,23 @@ app.put('/api/students/:id', (req, res) => {
 
 app.delete('/api/students/:id', (req, res) => {
   const db = readDb();
-  const id = req.params.id;
-  const before = db.students.length;
-  db.students = db.students.filter(student => student.id !== id);
+  const groupId = String(req.query.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
 
-  if (db.students.length === before) {
+  const id = req.params.id;
+  const before = group.students.length;
+  group.students = group.students.filter(student => student.id !== id);
+
+  if (group.students.length === before) {
     return res.status(404).json({ error: 'Estudiante no encontrado.' });
   }
 
-  for (const date of Object.keys(db.attendance)) {
-    if (db.attendance[date] && db.attendance[date][id]) {
-      delete db.attendance[date][id];
-    }
+  for (const date of Object.keys(group.attendance)) {
+  if (group.attendance[date] && group.attendance[date][id]) {
+    delete group.attendance[date][id];
   }
+}
 
   writeDb(db);
   res.json({ ok: true });
@@ -153,25 +236,33 @@ app.delete('/api/students/:id', (req, res) => {
 
 app.get('/api/attendance/:date', (req, res) => {
   const db = readDb();
+  const groupId = String(req.query.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
+
   const date = req.params.date || todayISO();
-  res.json(db.attendance[date] || {});
+  res.json(group.attendance[date] || {});
 });
 
 app.put('/api/attendance/:date/:studentId', (req, res) => {
   const db = readDb();
+  const groupId = String(req.body.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
+
   const date = req.params.date;
   const studentId = req.params.studentId;
   const status = String(req.body.status || '').trim();
   const teacher = String(req.body.teacher || '').trim();
 
-  if (!db.students.find(student => student.id === studentId)) {
+  if (!group.students.find(student => student.id === studentId)) {
     return res.status(404).json({ error: 'Estudiante no encontrado.' });
   }
 
-  if (!db.attendance[date]) db.attendance[date] = {};
+  if (!group.attendance[date]) group.attendance[date] = {};
 
   if (!status) {
-    delete db.attendance[date][studentId];
+    delete group.attendance[date][studentId];
     writeDb(db);
     return res.json({ ok: true, cleared: true });
   }
@@ -180,19 +271,23 @@ app.put('/api/attendance/:date/:studentId', (req, res) => {
     return res.status(400).json({ error: 'Estado inválido.' });
   }
 
-  db.attendance[date][studentId] = {
+  group.attendance[date][studentId] = {
     status,
     teacher,
     updatedAt: new Date().toISOString()
   };
 
   writeDb(db);
-  res.json({ ok: true, record: db.attendance[date][studentId] });
+  res.json({ ok: true, record: group.attendance[date][studentId] });
 });
 
 app.delete('/api/attendance/:date', (req, res) => {
   const db = readDb();
-  delete db.attendance[req.params.date];
+  const groupId = String(req.query.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
+
+  delete group.attendance[req.params.date];
   writeDb(db);
   res.json({ ok: true });
 });
@@ -206,11 +301,14 @@ app.delete('/api/attendance/:date', (req, res) => {
 
 app.get('/api/history', (req, res) => {
   const db = readDb();
+  const groupId = String(req.query.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
 
-  const history = Object.keys(db.attendance)
+  const history = Object.keys(group.attendance)
     .sort((a, b) => b.localeCompare(a))
     .map(date => {
-      const records = db.attendance[date] || {};
+     const records = group.attendance[date] || {};
       let present = 0;
       let absent = 0;
 
@@ -221,11 +319,11 @@ app.get('/api/history', (req, res) => {
 
       return {
         date,
-        totalStudents: db.students.length,
+       totalStudents: group.students.length,
         marked: Object.keys(records).length,
         present,
         absent,
-        unmarked: Math.max(db.students.length - present - absent, 0)
+        unmarked: Math.max(group.students.length - present - absent, 0)
       };
     });
 
@@ -234,10 +332,14 @@ app.get('/api/history', (req, res) => {
 
 app.get('/api/history/:date', (req, res) => {
   const db = readDb();
-  const date = req.params.date;
-  const records = db.attendance[date] || {};
+  const groupId = String(req.query.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
 
-  const students = db.students
+  const date = req.params.date;
+  const records = group.attendance[date] || {};
+
+  const students = group.students
     .slice()
     .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name), 'es'))
     .map(student => ({
@@ -253,14 +355,18 @@ app.get('/api/history/:date', (req, res) => {
 
   res.json({
     date,
-    institutionName: db.config.institutionName || '',
+    institutionName: group.name || '',
     students
   });
 });
 
 app.delete('/api/history', (req, res) => {
   const db = readDb();
-  db.attendance = {};
+  const groupId = String(req.query.groupId || '').trim();
+  const group = getGroupOr404(db, groupId, res);
+  if (!group) return;
+
+  group.attendance = {};
   writeDb(db);
   res.json({ ok: true });
 });
