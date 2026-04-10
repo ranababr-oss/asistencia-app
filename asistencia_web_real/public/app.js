@@ -128,13 +128,19 @@ async function openGroupDialog() {
     return;
   }
 
-  await api('/api/groups', {
+  const data = await api('/api/groups', {
     method: 'POST',
     body: JSON.stringify({ name: cleanName })
   });
 
-  showToast('Grupo creado');
+  currentGroupId = data.currentGroupId || data.group?.id || '';
   await loadGroups();
+
+  if (groupSelect && currentGroupId) {
+    groupSelect.value = currentGroupId;
+  }
+
+  showToast('Grupo creado y seleccionado');
   await loadAll();
 }
 
