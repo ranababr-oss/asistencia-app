@@ -16,8 +16,8 @@
 
       <div class="grid grid-3">
         <div>
-          <label for="institutionName">Institución</label>
-          <input id="institutionName" type="text" placeholder="Ej. Iglesia / Escuela / Colegio" />
+          <label for="groupSelect">Grupo</label>
+<select id="groupSelect"></select>
         </div>
         <div>
           <label for="attendanceDate">Día</label>
@@ -30,7 +30,8 @@
       </div>
 
       <div class="actions-row top-actions">
-        <button id="saveConfigBtn" type="button">Guardar institución</button>
+        <button id="newGroupBtn" type="button">Crear grupo</button>
+<button id="saveGroupBtn" type="button" class="btn-soft">Usar grupo</button>
         <button id="newStudentBtn" type="button" class="btn-soft">Agregar joven</button>
         <button id="clearDayBtn" type="button" class="btn-soft">Limpiar día actual</button>
       </div>
@@ -112,6 +113,20 @@
     </div>
   </div>
 
+  <dialog id="groupDialog" class="dialog">
+  <form method="dialog" class="dialog-card" id="groupForm">
+    <h3>Crear grupo</h3>
+
+    <label for="groupName">Nombre del grupo</label>
+    <input id="groupName" type="text" placeholder="Ej. Jóvenes adultos" />
+
+    <div class="actions-row">
+      <button type="button" id="cancelGroupDialogBtn" class="btn-neutral">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+  
   <dialog id="studentDialog" class="dialog">
   <form method="dialog" class="dialog-card" id="studentForm">
     <h3 id="dialogTitle">Agregar joven</h3>
