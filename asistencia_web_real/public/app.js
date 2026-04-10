@@ -1,7 +1,8 @@
-const institutionNameInput = document.getElementById('institutionName');
+const groupSelect = document.getElementById('groupSelect');
+const newGroupBtn = document.getElementById('newGroupBtn');
 const attendanceDateInput = document.getElementById('attendanceDate');
 const teacherNameInput = document.getElementById('teacherName');
-const saveConfigBtn = document.getElementById('saveConfigBtn');
+const saveGroupBtn = document.getElementById('saveGroupBtn');
 const newStudentBtn = document.getElementById('newStudentBtn');
 const clearDayBtn = document.getElementById('clearDayBtn');
 const refreshBtn = document.getElementById('refreshBtn');
@@ -18,6 +19,10 @@ const emptyStudents = document.getElementById('emptyStudents');
 const historyList = document.getElementById('historyList');
 const emptyHistory = document.getElementById('emptyHistory');
 
+const groupDialog = document.getElementById('groupDialog');
+const groupForm = document.getElementById('groupForm');
+const groupNameInput = document.getElementById('groupName');
+const cancelGroupDialogBtn = document.getElementById('cancelGroupDialogBtn');
 const studentDialog = document.getElementById('studentDialog');
 const studentForm = document.getElementById('studentForm');
 const dialogTitle = document.getElementById('dialogTitle');
@@ -42,6 +47,8 @@ const reportStudentBtn = document.getElementById('reportStudentBtn');
 const reportMonthBtn = document.getElementById('reportMonthBtn');
 const reportOutput = document.getElementById('reportOutput');
 
+let groups = [];
+let currentGroupId = '';
 let students = [];
 let attendance = {};
 let history = [];
@@ -71,7 +78,91 @@ function showToast(message) {
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 2200);
 }
+function requireGroup() {
+  if (!currentGroupId) {
+    showToast('Primero crea o selecciona un grupo');
+    return false;
+  }
+  return true;
+}
 
+function fillGroupSelect() {
+  if (!groupSelect) return;
+
+  groupSelect.innerHTML = '';
+
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = 'Selecciona un grupo';
+  groupSelect.appendChild(first);
+
+  groups
+    .slice()
+    .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name), 'es'))
+    .forEach(group => {
+      const option = document.createElement('option');
+      option.value = group.id;
+      option.textContent = group.name;
+      if (group.id === currentGroupId) {
+        option.selected = true;
+      }
+      groupSelect.appendChild(option);
+    });
+}
+
+async function loadGroups() {
+  const data = await api('/api/groups');
+  groups = data.groups || [];
+  currentGroupId = data.currentGroupId || '';
+  fillGroupSelect();
+}
+
+function openGroupDialog() {
+  if (!groupDialog) return;
+  groupDialog.showModal();
+  setTimeout(() => groupNameInput.focus(), 50);
+}
+
+function closeGroupDialog() {
+  if (!groupDialog) return;
+  groupDialog.close();
+  groupForm.reset();
+  groupNameInput.value = '';
+}
+
+async function saveGroupFromDialog(event) {
+  event.preventDefault();
+
+  const name = groupNameInput.value.trim();
+  if (!name) {
+    showToast('Escribe el nombre del grupo');
+    groupNameInput.focus();
+    return;
+  }
+
+  await api('/api/groups', {
+    method: 'POST',
+    body: JSON.stringify({ name })
+  });
+
+  showToast('Grupo creado');
+  closeGroupDialog();
+  await loadGroups();
+  await loadAll();
+}
+
+async function useSelectedGroup() {
+  const groupId = groupSelect.value;
+
+  await api('/api/groups/current', {
+    method: 'PUT',
+    body: JSON.stringify({ groupId })
+  });
+
+  currentGroupId = groupId;
+  showToast(groupId ? 'Grupo seleccionado' : 'Sin grupo seleccionado');
+  await loadAll();
+}
 async function api(url, options = {}) {
   const response = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
@@ -297,20 +388,33 @@ async function loadConfig() {
 }
 
 async function loadStudents() {
-  students = await api('/api/students');
+  if (!currentGroupId) {
+    students = [];
+    return;
+  }
+  students = await api('/api/students?groupId=' + encodeURIComponent(currentGroupId));
 }
 
 async function loadAttendance() {
+  if (!currentGroupId) {
+    attendance = {};
+    return;
+  }
+
   const date = attendanceDateInput.value || todayISO();
-  attendance = await api('/api/attendance/' + date);
+  attendance = await api('/api/attendance/' + date + '?groupId=' + encodeURIComponent(currentGroupId));
 }
 
 async function loadHistory() {
-  history = await api('/api/history');
+  if (!currentGroupId) {
+    history = [];
+    return;
+  }
+  history = await api('/api/history?groupId=' + encodeURIComponent(currentGroupId));
 }
 
 async function loadAll() {
-  await Promise.all([loadConfig(), loadStudents(), loadAttendance(), loadHistory()]);
+  await Promise.all([loadStudents(), loadAttendance(), loadHistory()]);
   fillStudentReportSelect();
   renderStudents();
   renderHistory();
@@ -347,6 +451,8 @@ function closeStudentDialog() {
 async function saveStudentFromDialog(event) {
   event.preventDefault();
 
+  if (!requireGroup()) return;
+
   const id = studentIdInput.value;
   const name = studentNameInput.value.trim();
   const phone = studentPhoneInput.value.trim();
@@ -360,6 +466,7 @@ async function saveStudentFromDialog(event) {
   }
 
   const payload = {
+    groupId: currentGroupId,
     name,
     phone,
     parentName,
@@ -385,37 +492,53 @@ async function saveStudentFromDialog(event) {
 }
 
 async function deleteStudent(student) {
+  if (!requireGroup()) return;
   if (!confirm('¿Eliminar a ' + student.name + ' de la lista fija?')) return;
-  await api('/api/students/' + student.id, { method: 'DELETE' });
+
+  await api('/api/students/' + student.id + '?groupId=' + encodeURIComponent(currentGroupId), {
+    method: 'DELETE'
+  });
+
   showToast('Joven eliminado');
   await loadAll();
 }
 
 async function setAttendance(studentId, status) {
+  if (!requireGroup()) return;
+
   await api('/api/attendance/' + attendanceDateInput.value + '/' + studentId, {
     method: 'PUT',
     body: JSON.stringify({
+      groupId: currentGroupId,
       status,
       teacher: teacherNameInput.value.trim()
     })
   });
 
-  attendance = await api('/api/attendance/' + attendanceDateInput.value);
+  attendance = await api('/api/attendance/' + attendanceDateInput.value + '?groupId=' + encodeURIComponent(currentGroupId));
   renderStudents();
 }
 
-async function clearCurrentDay() {
-  if (!confirm('¿Limpiar todas las marcas del día actual?')) return;
-  await api('/api/attendance/' + attendanceDateInput.value, { method: 'DELETE' });
-  attendance = {};
+async function setAttendance(studentId, status) {
+  if (!requireGroup()) return;
+
+  await api('/api/attendance/' + attendanceDateInput.value + '/' + studentId, {
+    method: 'PUT',
+    body: JSON.stringify({
+      groupId: currentGroupId,
+      status,
+      teacher: teacherNameInput.value.trim()
+    })
+  });
+
+  attendance = await api('/api/attendance/' + attendanceDateInput.value + '?groupId=' + encodeURIComponent(currentGroupId));
   renderStudents();
-  await loadHistory();
-  renderHistory();
-  showToast('Día limpiado');
 }
 
 async function openHistoryDetail(date) {
-  const detail = await api('/api/history/' + date);
+  if (!requireGroup()) return;
+
+  const detail = await api('/api/history/' + date + '?groupId=' + encodeURIComponent(currentGroupId));
 
   historyDialogTitle.textContent = 'Detalle de ' + date;
   historyDialogSub.textContent = detail.institutionName || '';
@@ -479,19 +602,23 @@ function renderReportCard(title, lines) {
 }
 
 async function showDayReport() {
+  if (!requireGroup()) return;
+
   const date = reportDateInput.value;
   if (!date) {
     showToast('Selecciona una fecha');
     return;
   }
 
-  const detail = await api('/api/history/' + date);
+  const detail = await api('/api/history/' + date + '?groupId=' + encodeURIComponent(currentGroupId));
   const lines = detail.students.map(student => `${student.name}: ${student.status || 'Sin marcar'}`);
 
   renderReportCard('Reporte del día ' + date, lines.length ? lines : ['No hay datos']);
 }
 
 async function showStudentReport() {
+  if (!requireGroup()) return;
+
   const studentId = reportStudentSelect.value;
   if (!studentId) {
     showToast('Selecciona un joven');
@@ -499,11 +626,11 @@ async function showStudentReport() {
   }
 
   const student = students.find(s => s.id === studentId);
-  const historyItems = await api('/api/history');
+  const historyItems = await api('/api/history?groupId=' + encodeURIComponent(currentGroupId));
   const lines = [];
 
   for (const item of historyItems) {
-    const detail = await api('/api/history/' + item.date);
+    const detail = await api('/api/history/' + item.date + '?groupId=' + encodeURIComponent(currentGroupId));
     const row = detail.students.find(s => s.id === studentId);
     lines.push(`${item.date}: ${row?.status || 'Sin marcar'}`);
   }
@@ -515,13 +642,15 @@ async function showStudentReport() {
 }
 
 async function showMonthReport() {
+  if (!requireGroup()) return;
+
   const month = reportMonthInput.value;
   if (!month) {
     showToast('Selecciona un mes');
     return;
   }
 
-  const historyItems = await api('/api/history');
+  const historyItems = await api('/api/history?groupId=' + encodeURIComponent(currentGroupId));
   const filtered = historyItems.filter(item => item.date.startsWith(month));
 
   if (!filtered.length) {
@@ -549,19 +678,28 @@ async function showMonthReport() {
   renderReportCard('Reporte del mes ' + month, lines);
 }
 
-saveConfigBtn.addEventListener('click', saveConfig);
-newStudentBtn.addEventListener('click', () => openStudentDialog());
+newGroupBtn.addEventListener('click', openGroupDialog);
+saveGroupBtn.addEventListener('click', useSelectedGroup);
+newStudentBtn.addEventListener('click', () => {
+  if (!requireGroup()) return;
+  openStudentDialog();
+});
 clearDayBtn.addEventListener('click', clearCurrentDay);
 refreshBtn.addEventListener('click', loadAll);
 clearHistoryBtn.addEventListener('click', async () => {
+  if (!requireGroup()) return;
   if (!confirm('¿Seguro que quieres borrar todo el historial?')) return;
-  await api('/api/history', { method: 'DELETE' });
+
+  await api('/api/history?groupId=' + encodeURIComponent(currentGroupId), {
+    method: 'DELETE'
+  });
+
   showToast('Historial borrado');
   await loadAll();
 });
 
-studentForm.addEventListener('submit', saveStudentFromDialog);
-cancelDialogBtn.addEventListener('click', closeStudentDialog);
+groupForm.addEventListener('submit', saveGroupFromDialog);
+cancelGroupDialogBtn.addEventListener('click', closeGroupDialog);
 
 if (closeHistoryDialogBtn) {
   closeHistoryDialogBtn.addEventListener('click', () => {
@@ -592,12 +730,6 @@ attendanceDateInput.addEventListener('change', async () => {
   renderStudents();
 });
 
-institutionNameInput.addEventListener('blur', () => {
-  if (institutionNameInput.value.trim()) {
-    saveConfig().catch(() => {});
-  }
-});
-
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -614,6 +746,8 @@ if (reportMonthInput) {
   reportMonthInput.value = todayMonth();
 }
 
-loadAll().catch(error => {
-  alert(error.message || 'No se pudo cargar la app.');
-});
+loadGroups()
+  .then(loadAll)
+  .catch(error => {
+    alert(error.message || 'No se pudo cargar la app.');
+  });
