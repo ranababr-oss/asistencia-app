@@ -117,10 +117,25 @@ async function loadGroups() {
   fillGroupSelect();
 }
 
-function openGroupDialog() {
-  if (!groupDialog) return;
-  groupDialog.showModal();
-  setTimeout(() => groupNameInput.focus(), 50);
+async function openGroupDialog() {
+  const name = prompt('Escribe el nombre del grupo');
+
+  if (name === null) return;
+
+  const cleanName = name.trim();
+  if (!cleanName) {
+    showToast('Escribe el nombre del grupo');
+    return;
+  }
+
+  await api('/api/groups', {
+    method: 'POST',
+    body: JSON.stringify({ name: cleanName })
+  });
+
+  showToast('Grupo creado');
+  await loadGroups();
+  await loadAll();
 }
 
 function closeGroupDialog() {
